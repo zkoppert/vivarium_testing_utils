@@ -28,6 +28,9 @@ IS_ON_SLURM = is_on_slurm()
 def pytest_addoption(parser: argparsing.Parser) -> None:
     parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
     parser.addoption(
+        "--runweekly", action="store_true", default=False, help="run weekly tests"
+    )
+    parser.addoption(
         "--slurm-project",
         type=str,
         default="proj_simscience",
@@ -46,22 +49,22 @@ def pytest_collection_modifyitems(config: Config, items: list[Function]) -> None
     if not config.getoption("--runslow"):
         skip_slow = pytest.mark.skip(reason="need --runslow option to run")
         for item in items:
-            if "slow" in item.keywords:
+            if item.get_closest_marker("slow"):
                 item.add_marker(skip_slow)
 
     if not IS_ON_SLURM:
         skip_cluster = pytest.mark.skip(reason="not running on SLURM cluster")
         for item in items:
-            if "cluster" in item.keywords:
+            if item.get_closest_marker("cluster"):
                 item.add_marker(skip_cluster)
 
-    # Weekly tests also require it to be the slow test day
-    if not is_slow_test_day():
+    # Weekly tests also require it to be the slow test day (unless overridden)
+    if not config.getoption("--runweekly") and not is_slow_test_day():
         skip_weekly = pytest.mark.skip(
             reason="not the designated slow test day for weekly tests"
         )
         for item in items:
-            if "weekly" in item.keywords:
+            if item.get_closest_marker("weekly"):
                 item.add_marker(skip_weekly)
 
 
